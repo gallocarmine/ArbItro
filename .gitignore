@@ -1,0 +1,30 @@
+# --- File di Sistema Operativo ---
+.DS_Store
+Thumbs.db
+
+# --- Ambiente Virtuale Python ---
+venv/
+.venv/
+env/
+
+# --- Dati del Progetto ---
+data/
+*.mp4
+*.avi
+*.mov
+*.mkv
+
+# --- Modelli Salvati ---
+saved_models/
+*.keras
+*.h5
+*.pt
+*.pth
+
+# --- Configurazione IDE (PyCharm/VS Code) ---
+.idea/
+.vscode/
+
+# --- File Temporanei Python ---
+__pycache__/
+*.pyc
