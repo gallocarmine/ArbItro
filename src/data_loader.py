@@ -1,5 +1,6 @@
 import os
 import numpy as np
+import json
 import cv2
 from tensorflow.keras.utils import Sequence, to_categorical
 
@@ -147,6 +148,50 @@ class ArbItroDataGenerator(Sequence):
         frames = np.array(frames, dtype='float32') / 255.0
         return frames
 
+    def _apply_augmentation(self, video_data, sample):
+        augment_type = sample.get('augment_type', 'original')
+        if augment_type == 'original': return video_data
+
+        augmented = video_data.copy()
+        n_frames, h, w, c = augmented.shape
+
+        if 'flip' in augment_type:
+            augmented = np.flip(augmented, axis=2)
+
+        if 'rotation' in augment_type:
+            angle = np.random.uniform(-5, 5)
+            M = cv2.getRotationMatrix2D((w // 2, h // 2), angle, 1.0)
+            for i in range(n_frames):
+                augmented[i] = cv2.warpAffine(augmented[i], M, (w, h), borderMode=cv2.BORDER_REFLECT)
+
+        if 'zoom' in augment_type:
+            if 'in' in augment_type:
+                scale = np.random.uniform(1.1, 1.2)
+            elif 'out' in augment_type:
+                scale = np.random.uniform(0.85, 0.95)
+            else:
+                scale = np.random.uniform(0.9, 1.15)
+
+            for i in range(n_frames):
+                new_h, new_w = int(h * scale), int(w * scale)
+                resized = cv2.resize(augmented[i], (new_w, new_h), interpolation=cv2.INTER_LINEAR)
+                if scale > 1.0:
+                    sh, sw = (new_h - h) // 2, (new_w - w) // 2
+                    augmented[i] = resized[sh:sh + h, sw:sw + w]
+                else:
+                    ph, pw = (h - new_h) // 2, (w - new_w) // 2
+                    cropped = np.zeros((h, w, c), dtype=augmented[i].dtype)
+                    cropped[ph:ph + new_h, pw:pw + new_w] = resized
+                    augmented[i] = cropped
+
+        if 'brightness' in augment_type:
+            augmented = np.clip(augmented * np.random.uniform(0.8, 1.2), 0.0, 1.0)
+
+        if 'contrast' in augment_type:
+            mean = augmented.mean()
+            augmented = np.clip((augmented - mean) * np.random.uniform(0.7, 1.3) + mean, 0.0, 1.0)
+
+        return augmented
 
     def __data_generation(self, list_samples_temp):
         X_video = np.empty((self.batch_size, self.n_frames, *self.dim, 3), dtype='float32')
@@ -173,6 +218,7 @@ class ArbItroDataGenerator(Sequence):
                         break
 
             video_data = self._load_video_frames_native(full_path)
+            X_video[i, :] = self._apply_augmentation(video_data, sample)
             X_speed[i, 0] = float(clip_info.get('Replay speed', 1.0))
 
             y_sev.append(get_severity_class_raw(sample))
