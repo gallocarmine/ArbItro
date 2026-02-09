@@ -37,6 +37,85 @@ def get_severity_class_raw(row):
 # DATA GENERATOR CLASS
 class ArbItroDataGenerator(Sequence):
 
+    def __init__(self, json_path, base_video_path, batch_size=4, dim=(224, 398),
+                 n_frames=16, shuffle=True, use_auxiliary_features=False,
+                 augment=True):
+        super().__init__()
+        self.dim = dim
+        self.batch_size = batch_size
+        self.n_frames = n_frames
+        self.base_video_path = base_video_path
+        self.shuffle = shuffle
+        self.use_auxiliary_features = use_auxiliary_features
+        self.augment = augment
+
+        try:
+            with open(json_path, 'r') as f:
+                raw_data = json.load(f)
+        except FileNotFoundError:
+            raise FileNotFoundError(f"Error: JSON file not found: {json_path}")
+
+        # Samples extraction
+        temp_samples = []
+        actions = raw_data.get("Actions", raw_data)
+        if isinstance(actions, dict):
+            for k, v in actions.items():
+                if "Clips" in v and len(v["Clips"]) > 0: temp_samples.append(v)
+        elif isinstance(actions, list):
+            for v in actions:
+                if "Clips" in v and len(v["Clips"]) > 0: temp_samples.append(v)
+
+        self.samples = []
+
+        count_org = {0: 0, 1: 0, 2: 0}
+        count_aug = {0: 0, 1: 0, 2: 0}
+
+        for s in temp_samples:
+            severity_class = get_severity_class_raw(s)
+            count_org[severity_class] += 1
+
+            # Original sample
+            s_original = s.copy()
+            s_original['augment_type'] = 'original'
+            self.samples.append(s_original)
+
+            if self.augment:
+
+                # YELLOW CARD: 2x (original + flip)
+                if severity_class == 1:
+                    s_flip = s.copy()
+                    s_flip['augment_type'] = 'flip'
+                    self.samples.append(s_flip)
+                    count_aug[1] += 1
+
+                # RED CARD: 10x (original + 9 augmented)
+                elif severity_class == 2:
+                    augmentation_types = [
+                        'flip', 'rotation_small', 'flip_rotation', 'zoom_in',
+                        'brightness', 'contrast', 'rotation_contrast', 'zoom_brightness', 'zoom_out'
+                    ]
+                    for aug_type in augmentation_types:
+                        s_augmented = s.copy()
+                        s_augmented['augment_type'] = aug_type
+                        self.samples.append(s_augmented)
+                        count_aug[2] += 1
+
+        self.n_samples = len(self.samples)
+        self.indexes = np.arange(self.n_samples)
+        self.on_epoch_end()
+
+    def __len__(self):
+        return int(np.floor(self.n_samples / self.batch_size))
+
+    def __getitem__(self, index):
+        indexes = self.indexes[index * self.batch_size:(index + 1) * self.batch_size]
+        list_samples_temp = [self.samples[k] for k in indexes]
+        return self.__data_generation(list_samples_temp)
+
+    def on_epoch_end(self):
+        if self.shuffle:
+            np.random.shuffle(self.indexes)
+
     def _load_video_frames_native(self, video_path):
         cap = cv2.VideoCapture(video_path)
         frames = []
