@@ -28,3 +28,25 @@ class BinaryBalancedAccuracy(tf.keras.metrics.Metric):
 
     def reset_state(self):
         for v in [self.tp, self.tn, self.fp, self.fn]: v.assign(0.0)
+
+class MulticlassBalancedAccuracy(tf.keras.metrics.Metric):
+
+    def __init__(self, num_classes=3, name='multi_bal_acc', **kwargs):
+        super(MulticlassBalancedAccuracy, self).__init__(name=name, **kwargs)
+        self.num_classes = num_classes
+        self.cm = self.add_weight(name='cm', shape=(num_classes, num_classes), initializer='zeros')
+
+    def update_state(self, y_true, y_pred, sample_weight=None):
+
+        y_true = tf.argmax(y_true, axis=-1)
+        y_pred = tf.argmax(y_pred, axis=-1)
+        self.cm.assign_add(tf.math.confusion_matrix(y_true, y_pred, num_classes=self.num_classes, dtype=tf.float32))
+
+    def result(self):
+        diag = tf.linalg.tensor_diag_part(self.cm)
+        row_sums = tf.reduce_sum(self.cm, axis=1)
+        # recall means for class
+        return tf.reduce_mean(tf.math.divide_no_nan(diag, row_sums))
+
+    def reset_state(self):
+        self.cm.assign(tf.zeros((self.num_classes, self.num_classes)))
