@@ -1,5 +1,5 @@
 import tensorflow as tf
-from tensorflow.keras import layers, Model
+from tensorflow.keras import layers, Model, regularizers
 
 
 # METRICS DEFINITION
@@ -91,8 +91,34 @@ def build_arbitro_model_speed_aware(input_shape=(16, 224, 398, 3)):
     x_combined = layers.BatchNormalization()(x_combined)
     x_combined = layers.Dropout(0.4)(x_combined)
 
+
+    # 5. HEADS
+    # Severity
+    x_sev = layers.Dense(128, activation='relu', kernel_regularizer=regularizers.l2(0.02))(x_combined)
+    x_sev = layers.Dropout(0.3)(x_sev)
+    head_severity = layers.Dense(3, activation='softmax', kernel_regularizer=regularizers.l2(0.01),
+                                 name='head_severity')(x_sev)
+
+    # Offence
+    head_offence = layers.Dense(1, activation='sigmoid', name='head_offence')(x_combined)
+
+    # Action
+    x_act = layers.Dense(128, activation='relu', kernel_regularizer=regularizers.l2(0.01))(x_combined)
+    x_act = layers.Dropout(0.55)(x_act)
+    head_action = layers.Dense(9, activation='softmax', kernel_regularizer=regularizers.l2(0.005), name='head_action')(
+        x_act)
+
+    # Aux Heads
+    aux_contact = layers.Dense(1, activation='sigmoid', name='aux_contact')(x_combined)
+    aux_bodypart = layers.Dense(3, activation='softmax', name='aux_bodypart')(x_combined)
+    aux_touch_ball = layers.Dense(1, activation='linear', name='aux_touch_ball')(x_combined)
+    aux_handball = layers.Dense(1, activation='sigmoid', name='aux_handball')(x_combined)
+    aux_try_play = layers.Dense(1, activation='linear', name='aux_try_play')(x_combined)
+
     model = Model(
         inputs=[video_input, speed_input],
+        outputs=[head_severity, head_offence, head_action, aux_contact, aux_bodypart, aux_touch_ball, aux_handball,
+                 aux_try_play],
         name='ArbItro'
     )
     return model
