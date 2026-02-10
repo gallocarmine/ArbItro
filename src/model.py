@@ -1,4 +1,5 @@
 import tensorflow as tf
+from tensorflow.keras import layers, Model
 
 
 # METRICS DEFINITION
@@ -29,6 +30,7 @@ class BinaryBalancedAccuracy(tf.keras.metrics.Metric):
     def reset_state(self):
         for v in [self.tp, self.tn, self.fp, self.fn]: v.assign(0.0)
 
+
 class MulticlassBalancedAccuracy(tf.keras.metrics.Metric):
 
     def __init__(self, num_classes=3, name='multi_bal_acc', **kwargs):
@@ -50,3 +52,47 @@ class MulticlassBalancedAccuracy(tf.keras.metrics.Metric):
 
     def reset_state(self):
         self.cm.assign(tf.zeros((self.num_classes, self.num_classes)))
+
+
+# MODEL ARCHITECTURE
+def build_arbitro_model_speed_aware(input_shape=(16, 224, 398, 3)):
+
+    n_frames, frame_height, frame_width, channels = input_shape
+
+    # 1. INPUT LAYERS
+    video_input = layers.Input(shape=input_shape, name='video_input')
+    speed_input = layers.Input(shape=(1,), name='speed_input')
+
+    # 2. VIDEO BRANCH (InceptionResNetV2 + BiLSTM)
+    base_cnn = tf.keras.applications.InceptionResNetV2(
+        include_top=False, weights='imagenet',
+        input_shape=(frame_height, frame_width, channels)
+    )
+    # Freeze 70% (Transfer Learning)
+    for layer in base_cnn.layers[:int(len(base_cnn.layers) * 0.7)]:
+        layer.trainable = False
+
+    x_video = layers.TimeDistributed(base_cnn, name='td_cnn')(video_input)
+    x_video = layers.TimeDistributed(layers.GlobalAveragePooling2D(), name='td_gap')(x_video)
+    x_video = layers.TimeDistributed(layers.Dropout(0.5))(x_video)
+
+    x_video = layers.Bidirectional(
+        layers.LSTM(256, return_sequences=False, dropout=0.5), name='bilstm'
+    )(x_video)
+    x_video = layers.Dropout(0.5, name='dropout_video')(x_video)
+
+    # 3. SPEED BRANCH
+    x_speed = layers.Dense(32, activation='relu', name='speed_embed')(speed_input)
+    x_speed = layers.Dropout(0.3, name='dropout_speed')(x_speed)
+
+    # 4. FUSION
+    x_combined = layers.Concatenate(name='fusion')([x_video, x_speed])
+    x_combined = layers.Dense(512, activation='relu', name='dense_shared')(x_combined)
+    x_combined = layers.BatchNormalization()(x_combined)
+    x_combined = layers.Dropout(0.4)(x_combined)
+
+    model = Model(
+        inputs=[video_input, speed_input],
+        name='ArbItro'
+    )
+    return model
