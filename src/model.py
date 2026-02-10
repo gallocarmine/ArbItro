@@ -1,5 +1,6 @@
 import tensorflow as tf
 from tensorflow.keras import layers, Model, regularizers
+from tensorflow.keras.optimizers import Adam
 
 
 # METRICS DEFINITION
@@ -121,4 +122,55 @@ def build_arbitro_model_speed_aware(input_shape=(16, 224, 398, 3)):
                  aux_try_play],
         name='ArbItro'
     )
+    return model
+
+# LOSS & COMPILATION
+def focal_loss(gamma=2.5, alpha=0.25):
+    def loss_fn(y_true, y_pred):
+        epsilon = tf.keras.backend.epsilon()
+        y_pred = tf.clip_by_value(y_pred, epsilon, 1.0 - epsilon)
+        ce = -y_true * tf.math.log(y_pred)
+        focal_weight = tf.pow(1.0 - y_pred, gamma)
+        alpha_weight = y_true * alpha + (1 - y_true) * (1 - alpha)
+        return tf.reduce_mean(tf.reduce_sum(alpha_weight * focal_weight * ce, axis=-1))
+
+    return loss_fn
+
+
+def compile_arbitro_model(model):
+
+    losses = {
+        "head_severity": focal_loss(gamma=2.5, alpha=0.25),
+        "head_offence": "binary_crossentropy",
+        "head_action": "categorical_crossentropy",
+        "aux_contact": "binary_crossentropy",
+        "aux_bodypart": "categorical_crossentropy",
+        "aux_touch_ball": "mse",
+        "aux_handball": "binary_crossentropy",
+        "aux_try_play": "mse"
+    }
+
+    loss_weights = {
+        "head_severity": 8.0,
+        "head_offence": 3.0,
+        "head_action": 4.0,
+        "aux_contact": 0.1,
+        "aux_bodypart": 0.1,
+        "aux_touch_ball": 0.1,
+        "aux_handball": 0.1,
+        "aux_try_play": 0.1
+    }
+
+    metrics = {
+        "head_severity": ['accuracy', MulticlassBalancedAccuracy(num_classes=3, name='bal_acc')],
+        "head_offence": ['accuracy', BinaryBalancedAccuracy(name='bal_acc')],
+        "head_action": ['accuracy', MulticlassBalancedAccuracy(num_classes=9, name='bal_acc')],
+        "aux_contact": ['accuracy'],
+        "aux_bodypart": ['accuracy'],
+        "aux_touch_ball": ['mae'],
+        "aux_handball": ['accuracy'],
+        "aux_try_play": ['mae']
+    }
+
+    model.compile(optimizer=Adam(learning_rate=1e-4), loss=losses, loss_weights=loss_weights, metrics=metrics)
     return model
