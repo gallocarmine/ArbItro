@@ -1,5 +1,6 @@
 # --- File di Sistema Operativo ---
 .DS_Store
+**/.DS_Store
 Thumbs.db
 
 # --- Ambiente Virtuale Python ---
@@ -8,7 +9,7 @@ venv/
 env/
 
 # --- Dati del Progetto ---
-data/
+dataset/
 *.mp4
 *.avi
 *.mov
