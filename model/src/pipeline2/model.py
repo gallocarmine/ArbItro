@@ -204,3 +204,45 @@ def weighted_binary_focal_loss(zero_weight, gamma=2.0):
 
     return loss_fn
 
+
+# COMPILATION
+def compile_arbitro_model(model):
+    w_zero_offence_weight = 2.0
+    w_sev_list = [1.0, 1.5, 2.0]
+    w_act_list = [1.0, 1.0, 1.5, 3.0]
+
+    losses = {
+        "head_offence": weighted_binary_focal_loss(zero_weight=w_zero_offence_weight, gamma=2.0),
+        "head_severity": weighted_focal_loss(w_sev_list, gamma=2.0),
+        "head_action": weighted_focal_loss(w_act_list, gamma=2.0),
+        "aux_contact": "binary_crossentropy",
+        "aux_bodypart": "categorical_crossentropy",
+        "aux_touch_ball": "mse",
+        "aux_handball": "binary_crossentropy",
+        "aux_try_play": "mse",
+    }
+
+    loss_weights = {
+        "head_offence": 7.0,
+        "head_action": 7.0,
+        "head_severity": 4.0,
+        "aux_contact": 2.0,
+        "aux_bodypart": 0.5,
+        "aux_touch_ball": 0.5,
+        "aux_handball": 0.5,
+        "aux_try_play": 0.5,
+    }
+
+    metrics = {
+        "head_offence": ['accuracy', BinaryBalancedAccuracy(name='bal_acc')],
+        "head_severity": ['accuracy', MulticlassBalancedAccuracy(num_classes=3, name='bal_acc')],
+        "head_action": ['accuracy', MulticlassBalancedAccuracy(num_classes=4, name='bal_acc')],
+        "aux_contact": ['accuracy'],
+        "aux_bodypart": ['accuracy'],
+        "aux_touch_ball": ['mae'],
+        "aux_handball": ['accuracy'],
+        "aux_try_play": ['mae'],
+    }
+
+    model.compile(optimizer=Adam(learning_rate=1e-4), loss=losses, loss_weights=loss_weights, metrics=metrics)
+    return model
