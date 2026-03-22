@@ -232,3 +232,170 @@ class ArbItroDataGenerator(Sequence):
         except:
             return float(default)
 
+    def _apply_augmentation(self, video_data, sample):
+        aug_type = sample.get('augment_type', 'original')
+
+        # Skip augmentation for original samples
+        if aug_type == 'original':
+            return video_data
+
+        augmented = video_data.copy()
+        n_frames, h, w, c = augmented.shape
+
+        # Parse compound ops: "flip_zoom" -> ["flip", "zoom"]
+        ops = aug_type.split('_')
+
+        # Flip
+        if 'flip' in ops:
+            # axis 2 is width (Frames, H, W, C)
+            augmented = np.flip(augmented, axis=2)
+
+        # Rotation
+        if 'rotation' in ops:
+            # large = stronger rotation
+            limit = 10 if 'large' in ops else 5
+            angle = np.random.uniform(-limit, limit)
+
+            # rotation matrix (centered)
+            M = cv2.getRotationMatrix2D((w // 2, h // 2), angle, 1.0)
+
+            for i in range(n_frames):
+                augmented[i] = cv2.warpAffine(
+                    augmented[i], M, (w, h),
+                    borderMode=cv2.BORDER_REFLECT  # reflect borders to avoid black edges
+                )
+
+        # Zoom
+        if 'zoom' in ops:
+            # out = shrinks (adds padding), in = enlarges (crops center)
+            if 'out' in ops:
+                scale = np.random.uniform(0.85, 0.95)
+            elif 'in' in ops:
+                scale = np.random.uniform(1.1, 1.25)
+            else:
+                scale = np.random.uniform(0.9, 1.1)
+
+            for i in range(n_frames):
+                new_h, new_w = int(h * scale), int(w * scale)
+                resized = cv2.resize(augmented[i], (new_w, new_h), interpolation=cv2.INTER_LINEAR)
+
+                if scale > 1.0:
+                    # Zoom in: center crop
+                    sh, sw = (new_h - h) // 2, (new_w - w) // 2
+                    augmented[i] = resized[sh:sh + h, sw:sw + w]
+                else:
+                    # Zoom out: black padding (centered)
+                    ph, pw = (h - new_h) // 2, (w - new_w) // 2
+
+                    # Black canvas
+                    canvas = np.zeros((h, w, c), dtype=augmented[i].dtype)
+
+                    # Safety bounds to avoid off-by-one rounding errors
+                    end_h = min(ph + new_h, h)
+                    end_w = min(pw + new_w, w)
+
+                    # Paste resized image at center
+                    canvas[ph:end_h, pw:end_w] = resized[:end_h - ph, :end_w - pw]
+                    augmented[i] = canvas
+
+        # Brightness
+        if 'brightness' in ops:
+            factor = np.random.uniform(0.8, 1.2)
+            # Clip to valid float32 range
+            augmented = np.clip(augmented * factor, 0.0, 1.0)
+
+        # Contrast
+        if 'contrast' in ops:
+            factor = np.random.uniform(0.7, 1.3)
+            mean = augmented.mean()
+            # Standard contrast formula
+            augmented = np.clip((augmented - mean) * factor + mean, 0.0, 1.0)
+
+        return augmented
+
+    def __data_generation(self, list_samples_temp):
+        # BATCH ALLOCATION
+        X_video = np.zeros((self.batch_size, self.max_clips, self.n_frames, *self.dim, 3), dtype='float32')
+        X_clip_mask = np.zeros((self.batch_size, self.max_clips), dtype='float32')
+        X_speed = np.zeros((self.batch_size, 1), dtype='float32')
+
+        y_sev, y_off, y_act = [], [], []
+        if self.use_auxiliary_features:
+            y_bodypart, y_contact, y_touch_ball, y_try_play, y_handball = [], [], [], [], []
+
+        for i, sample in enumerate(list_samples_temp):
+            clips = sample.get("Clips", [])
+            n = min(len(clips), self.max_clips)
+
+            speed_sum = 0.0
+            speed_cnt = 0.0
+
+            for j in range(n):
+                clip_info = clips[j]
+
+                parts = clip_info["Url"].replace('\\', '/').split('/')
+                try:
+                    start_idx = next(idx for idx, p in enumerate(parts) if "action_" in p)
+                except:
+                    start_idx = -2
+
+                clean_path = os.path.join(*parts[start_idx:])
+                full_path = os.path.join(self.base_video_path, clean_path)
+
+                if not os.path.exists(full_path):
+                    for ext in ['.mp4', '.avi', '.mkv', '.mov']:
+                        if os.path.exists(full_path + ext):
+                            full_path += ext
+                            break
+
+                video_data = self._load_video_frames_native(full_path).astype(np.float32)
+                video_data = video_data / 255.0
+                video_data = self._apply_augmentation(video_data, sample)
+                video_data = (video_data * 255.0).astype(np.float32)
+                video_data = preprocess_input(video_data)
+
+                X_video[i, j] = video_data
+                X_clip_mask[i, j] = 1.0
+
+                # Replay speed
+                rs = self._parse_replay_speed(clip_info.get("Replay speed", None), default=1.0)
+                speed_sum += rs
+                speed_cnt += 1.0
+
+            # Masked mean of replay speeds (0 if no clips)
+            X_speed[i, 0] = (speed_sum / speed_cnt) if speed_cnt > 0 else 0.0
+
+            # Labels
+            y_sev.append(get_severity_class_raw(sample))
+            y_off.append(OFFENCE_MAP.get(sample.get('Offence', ''), 0))
+            y_act.append(MACRO_ACTION_MAP.get(sample.get('Action class', ''), 0))
+
+            if self.use_auxiliary_features:
+                y_bodypart.append(BODYPART_MAP.get(sample.get('Bodypart', ''), 0))
+                y_contact.append(CONTACT_MAP.get(sample.get('Contact', ''), 0))
+                y_touch_ball.append(TOUCH_BALL_MAP.get(sample.get('Touch ball', ''), 0.0))
+                y_try_play.append(TRY_TO_PLAY_MAP.get(sample.get('Try to play', ''), 0.5))
+                y_handball.append(HANDBALL_MAP.get(sample.get('Handball', ''), 0))
+
+        inputs = {
+            "video_input": X_video,
+            "clip_mask": X_clip_mask,
+            "speed_input": X_speed,
+        }
+
+        outputs = {
+            "head_severity": to_categorical(y_sev, num_classes=3),
+            "head_offence": np.array(y_off, dtype='float32').reshape(-1, 1),
+            "head_action": to_categorical(y_act, num_classes=4),
+        }
+
+        if self.use_auxiliary_features:
+            outputs.update({
+                "aux_contact": np.array(y_contact, dtype='float32').reshape(-1, 1),
+                "aux_bodypart": to_categorical(y_bodypart, num_classes=3),
+                "aux_touch_ball": np.array(y_touch_ball, dtype='float32').reshape(-1, 1),
+                "aux_handball": np.array(y_handball, dtype='float32').reshape(-1, 1),
+                "aux_try_play": np.array(y_try_play, dtype='float32').reshape(-1, 1),
+            })
+
+        return inputs, outputs
