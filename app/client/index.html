@@ -1,0 +1,102 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="UTF-8">
+<title>ArbItro</title>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="static/style.css">
+</head>
+<body>
+
+<div class="app-layout">
+
+    <main class="stage-area">
+
+        <div class="video-grid empty" id="gridContainer">
+            <div class="empty-state-premium">
+                <p>Upload up to 4 videos to start the session.</p>
+            </div>
+        </div>
+
+        <div class="blur-overlay" id="analysisOverlay">
+            <div class="result-modal">
+                <img id="resultImage" src="" alt="Card Result">
+                <h2 id="resultText" style="margin:0; font-size:28px; font-weight:800; text-transform:uppercase;">-</h2>
+                <button class="close-btn" onclick="closeAnalysis()">CLOSE</button>
+            </div>
+        </div>
+
+        <div class="global-control-panel" id="globalControls">
+            <div class="glass-panel">
+                <button class="control-btn" onclick="rewindAll()" title="Riavvolgi">
+                    <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polygon points="11 19 2 12 11 5 11 19"></polygon><polygon points="22 19 13 12 22 5 22 19"></polygon></svg>
+                </button>
+
+                <button class="control-btn play-btn" id="globalPlayBtn" onclick="togglePlayAll()" title="Play/Pausa">
+                    <svg id="iconPlay" width="24" height="24" viewBox="0 0 24 24" fill="white" stroke="currentColor" stroke-width="0"><polygon points="5 3 19 12 5 21 5 3"></polygon></svg>
+                    <svg id="iconPause" width="24" height="24" viewBox="0 0 24 24" fill="white" stroke="currentColor" stroke-width="0" style="display:none;"><rect x="6" y="4" width="4" height="16"></rect><rect x="14" y="4" width="4" height="16"></rect></svg>
+                </button>
+
+                <div class="slider-wrapper">
+                    <input type="range" id="globalSeek" min="0" max="100" value="0" oninput="seekAll(this.value)">
+                </div>
+            </div>
+        </div>
+
+    </main>
+
+    <aside class="glass-sidebar">
+        <img src="../../asset/logo.png" alt="ArbItro Logo" class="logo">
+
+        <div class="actions-row">
+            <button class="mini-action-btn" onclick="importVideos()">
+                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path><polyline points="17 8 12 3 7 8"></polyline><line x1="12" y1="3" x2="12" y2="15"></line></svg>
+            </button>
+            <button class="mini-action-btn destructive" id="btnRemove" onclick="clearVideos()" disabled>
+                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="3 6 5 6 21 6"></polyline><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path></svg>
+            </button>
+        </div>
+
+        <div class="spacer-small"></div>
+
+        <div class="analysis-panel" id="speedPanel" style="display: none;">
+            <div class="panel-header">AI INPUT SPEED</div>
+            <div class="speed-rows-container" id="speedRowsContainer"></div>
+        </div>
+
+        <div class="spacer-small"></div>
+
+        <div class="analysis-panel" id="aiPanel">
+            <div class="panel-header">AI TELEMETRY</div>
+
+            <div class="telemetry-content">
+                <div class="data-row">
+                    <span class="label">SEVERITY</span>
+                    <span class="value" id="valSeverity">-</span>
+                </div>
+                <div class="separator"></div>
+
+                <div class="data-row">
+                    <span class="label">OFFENCE</span>
+                    <span class="value" id="valOffence">-</span>
+                </div>
+                <div class="separator"></div>
+
+                <div class="data-row">
+                    <span class="label">ACTION CLASS</span>
+                    <span class="value" id="valAction">-</span>
+                </div>
+            </div>
+        </div>
+
+        <button class="cta-button" id="btnAnalyze" onclick="runAnalysis()" disabled>
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="margin-right:8px"><polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"></polygon></svg>
+            Analyze Action
+        </button>
+    </aside>
+
+</div>
+
+<script src="static/renderer.js"></script>
+</body>
+</html>
