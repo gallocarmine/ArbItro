@@ -187,3 +187,48 @@ class ArbItroDataGenerator(Sequence):
     def on_epoch_end(self):
         if self.shuffle:
             np.random.shuffle(self.indexes)
+
+    def _load_video_frames_native(self, video_path):
+        cap = cv2.VideoCapture(video_path)
+        frames = []
+
+        try:
+            frame_count = int(cap.get(cv2.CAP_PROP_FRAME_COUNT))
+        except:
+            frame_count = 0
+
+        if frame_count <= 0:
+            cap.release()
+            return np.zeros((self.n_frames, *self.dim, 3), dtype='float32')
+
+        if frame_count >= self.n_frames:
+            indices = np.linspace(0, frame_count - 1, self.n_frames, dtype=int)
+        else:
+            indices = np.array([i % frame_count for i in range(self.n_frames)])
+
+        for target_idx in indices:
+            cap.set(cv2.CAP_PROP_POS_FRAMES, int(target_idx))
+            ret, frame = cap.read()
+            if not ret:
+                frame = np.zeros((*self.dim, 3), dtype=np.uint8)
+            else:
+                frame = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)
+            frames.append(frame)
+
+        cap.release()
+        frames = np.array(frames, dtype='float32')
+        return frames
+
+    def _parse_replay_speed(self, x, default=1.0):
+        # Accepts float, string, or mixed formats
+        try:
+            if isinstance(x, (int, float)):
+                return float(x)
+            if x is None:
+                return float(default)
+            s = str(x)
+            m = re.search(r"[-+]?\d*\.?\d+", s)
+            return float(m.group(0)) if m else float(default)
+        except:
+            return float(default)
+
