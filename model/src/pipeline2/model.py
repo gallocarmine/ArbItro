@@ -170,3 +170,37 @@ def build_arbitro_model_speed_aware_lstm_multiclip(
         },
         name="ArbItro",
     )
+
+# LOSS FORMULATION
+def weighted_focal_loss(class_weights_list, gamma=2.0):
+    class_weights_tensor = tf.constant(class_weights_list, dtype=tf.float32)
+
+    def loss_fn(y_true, y_pred):
+        epsilon = tf.keras.backend.epsilon()
+        y_pred = tf.clip_by_value(y_pred, epsilon, 1.0 - epsilon)
+        ce = -y_true * tf.math.log(y_pred)
+        focal_term = tf.pow(1.0 - y_pred, gamma)
+
+        base_loss = tf.reduce_sum(focal_term * ce, axis=-1)
+        sample_weights = tf.reduce_sum(y_true * class_weights_tensor, axis=-1)
+
+        return tf.reduce_mean(base_loss * sample_weights)
+
+    return loss_fn
+
+
+def weighted_binary_focal_loss(zero_weight, gamma=2.0):
+    def loss_fn(y_true, y_pred):
+        epsilon = tf.keras.backend.epsilon()
+        y_pred = tf.clip_by_value(y_pred, epsilon, 1.0 - epsilon)
+
+        bce = -y_true * tf.math.log(y_pred) - (1 - y_true) * tf.math.log(1 - y_pred)
+        p_t = y_true * y_pred + (1 - y_true) * (1 - y_pred)
+        focal_term = tf.pow(1.0 - p_t, gamma)
+
+        class_w = (1.0 - y_true) * zero_weight + y_true * 1.0
+
+        return tf.reduce_mean(class_w * focal_term * bce)
+
+    return loss_fn
+
