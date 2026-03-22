@@ -135,3 +135,55 @@ class ArbItroDataGenerator(Sequence):
         self.indexes = np.arange(self.n_samples)
 
         self.on_epoch_end()
+
+
+    def get_class_weights(self):
+        # Extract labels
+        all_sev = []
+        all_off = []
+        all_act = []
+
+        for s in self.samples:
+            all_sev.append(get_severity_class_raw(s))
+            all_off.append(OFFENCE_MAP.get(s.get('Offence', ''), 0))
+            all_act.append(MACRO_ACTION_MAP.get(s.get('Action class', ''), 0))
+
+        # Compute class weights
+        # Severity
+        classes_sev = np.unique(all_sev)
+        weights_sev = class_weight.compute_class_weight(
+            class_weight='balanced', classes=classes_sev, y=all_sev
+        )
+        dict_sev = dict(zip(classes_sev, weights_sev))
+
+        # Offence
+        classes_off = np.unique(all_off)
+        weights_off = class_weight.compute_class_weight(
+            class_weight='balanced', classes=classes_off, y=all_off
+        )
+        dict_off = dict(zip(classes_off, weights_off))
+
+        # Action
+        classes_act = np.unique(all_act)
+        weights_act = class_weight.compute_class_weight(
+            class_weight='balanced', classes=classes_act, y=all_act
+        )
+        dict_act = dict(zip(classes_act, weights_act))
+
+        return {
+            "head_severity": dict_sev,
+            "head_offence": dict_off,
+            "head_action": dict_act,
+        }
+
+    def __len__(self):
+        return int(np.floor(self.n_samples / self.batch_size))
+
+    def __getitem__(self, index):
+        indexes = self.indexes[index * self.batch_size:(index + 1) * self.batch_size]
+        list_samples_temp = [self.samples[k] for k in indexes]
+        return self.__data_generation(list_samples_temp)
+
+    def on_epoch_end(self):
+        if self.shuffle:
+            np.random.shuffle(self.indexes)
