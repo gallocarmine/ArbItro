@@ -45,3 +45,93 @@ def get_severity_class_raw(row):
         return SEVERITY_CLASS_MAP["YELLOW_CARD"]
     else:
         return SEVERITY_CLASS_MAP["NO_CARD"]
+
+
+# DATA GENERATOR CLASS
+class ArbItroDataGenerator(Sequence):
+
+    def __init__(self, json_path, base_video_path, batch_size=16, max_clips=4, dim=(224, 398),
+                 n_frames=16, shuffle=True, use_auxiliary_features=False,
+                 augment=True):
+        super().__init__()
+        self.dim = dim
+        self.max_clips = max_clips
+        self.batch_size = batch_size
+        self.n_frames = n_frames
+        self.base_video_path = base_video_path
+        self.shuffle = shuffle
+        self.use_auxiliary_features = use_auxiliary_features
+        self.augment = augment
+
+        try:
+            with open(json_path, 'r') as f:
+                raw_data = json.load(f)
+        except FileNotFoundError:
+            raise FileNotFoundError(f"Error: JSON file not found: {json_path}")
+
+        # Samples extraction
+        temp_samples = []
+        actions = raw_data.get("Actions", raw_data)
+        if isinstance(actions, dict):
+            for k, v in actions.items():
+                if "Clips" in v and len(v["Clips"]) > 0: temp_samples.append(v)
+        elif isinstance(actions, list):
+            for v in actions:
+                if "Clips" in v and len(v["Clips"]) > 0: temp_samples.append(v)
+
+        self.samples = []
+
+        count_org = {0: 0, 1: 0, 2: 0}
+        stats = {'aug_red': 0, 'aug_yellow': 0, 'aug_no_offence': 0, 'aug_rare_action': 0}
+
+        # Rare actions targeted for augmentation
+        RARE_ACTIONS = ["High leg", "Elbowing", "Pushing", "Dive", "Holding"]
+
+        for s in temp_samples:
+            severity_class = get_severity_class_raw(s)
+            offence_val = OFFENCE_MAP.get(s.get('Offence', ''), 0)
+            action_str = s.get('Action class', '')
+
+            count_org[severity_class] += 1
+
+            # Always add the original sample
+            s_original = s.copy()
+            s_original['augment_type'] = 'original'
+            self.samples.append(s_original)
+
+            # Strategic Augmentation
+            if self.augment:
+                # Red Cards (x10)
+                if severity_class == 2:
+                    augmentation_types = [
+                        'flip', 'rotation_small', 'flip_rotation', 'zoom_in',
+                        'brightness', 'contrast', 'rotation_contrast', 'zoom_brightness', 'zoom_out'
+                    ]
+                    for aug_type in augmentation_types:
+                        s_aug = s.copy()
+                        s_aug['augment_type'] = aug_type
+                        self.samples.append(s_aug)
+                        stats['aug_red'] += 1
+
+                # Yellow Cards (x2)
+                elif severity_class == 1:
+                    aug_types = ['flip']
+                    for aug in aug_types:
+                        s_aug = s.copy()
+                        s_aug['augment_type'] = aug
+                        self.samples.append(s_aug)
+                        stats['aug_no_offence'] += 1
+
+                # Rare Actions (x2)
+                elif action_str in RARE_ACTIONS:
+                    aug_types = ['flip']
+                    for aug in aug_types:
+                        s_aug = s.copy()
+                        s_aug['augment_type'] = aug
+                        self.samples.append(s_aug)
+                        stats['aug_rare_action'] += 1
+
+        self.n_samples = len(self.samples)
+        self.indexes = np.arange(self.n_samples)
+
+        self.on_epoch_end()
