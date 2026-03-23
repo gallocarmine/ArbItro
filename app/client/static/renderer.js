@@ -330,7 +330,7 @@ async function runAnalysis() {
     const overlay    = safeGet('analysisOverlay');
 
     if (aiPanel)    aiPanel.classList.add('active');
-    if (elSeverity) { elSeverity.innerText = 'ENSAMBLE...'; elSeverity.style.color = 'white'; }
+    if (elSeverity) { elSeverity.innerText = 'ENSEMBLE...'; elSeverity.style.color = 'white'; }
     if (elOffence)  { elOffence.innerText = 'WAIT...'; elOffence.style.color = '#FFFFFF'; }
     if (elAction)   elAction.innerText = 'WAIT...';
     if (overlay)    { overlay.style.display = 'none'; overlay.classList.remove('active'); }
