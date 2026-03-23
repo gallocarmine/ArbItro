@@ -15,6 +15,13 @@ treat foul detection as a simple binary problem, ArbItro employs a **_multitask 
 to simultaneously interpret the *type of offence*, the *nature of the action*, and,
 **crucially**, the **_severity_** of the **_disciplinary sanction required_**.
 
+<div align="center">
+  <h5>
+    📄 <a href="asset/ArbItro.pdf" target="_blank">Paper - ArbItro: A Multi-View Framework for Football Foul
+Recognition and VAR Decision Support </a>
+  </h5>
+</div>
+
 ##
 <br>
 
@@ -191,7 +198,7 @@ model/src/pipeline2/arbitro_test.ipynb
 
 **Ensemble Evaluation**
 ```bash
-model/src/ensamble_test.ipynb
+model/src/ensemble_test.ipynb
 ```
 
 > Requires both `pipeline1.keras` and `pipeline2.keras` to be present in `ArbItro_Training/models/`.
@@ -211,7 +218,6 @@ model/src/ensamble_test.ipynb
 ```bash
 git clone https://github.com/tuo-username/ArbItro.git
 cd ArbItro
-git lfs pull   # scarica pipeline1.keras e pipeline2.keras
 ```
 
 **2. Install Python dependencies**
@@ -311,7 +317,7 @@ ArbItro/
         │   ├── data_loader.py
         │   └── model.py
         │
-        └── ensamble_test.ipynb
+        └── ensemble_test.ipynb
 ```
 ##
 <br>
