@@ -17,7 +17,7 @@ to simultaneously interpret the *type of offence*, the *nature of the action*, a
 
 <div align="center">
   <h5>
-    📄 <a href="asset/ArbItro.pdf" target="_blank">Paper - ArbItro: A Multi-View Framework for Football Foul
+    📄 <a href="asset/Arbitro.pdf" target="_blank">Paper - ArbItro: A Multi-View Framework for Football Foul
 Recognition and VAR Decision Support </a>
   </h5>
 </div>
