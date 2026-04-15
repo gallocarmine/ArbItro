@@ -3,9 +3,12 @@
 <div align="center">
     <img src="https://img.shields.io/badge/python-3.12%2B-blue.svg" alt="Python Version">
     <a href="LICENSE">
-    <img src="https://img.shields.io/badge/License-CC%20BY--NC%204.0-lightgrey.svg" alt="License: CC BY-NC 4.0">
+        <img src="https://img.shields.io/badge/License-CC%20BY--NC%204.0-lightgrey.svg" alt="License: CC BY-NC 4.0">
     </a>
-</div> 
+    <a href="https://doi.org/10.5281/zenodo.19594669">
+        <img src="https://img.shields.io/badge/DOI-10.5281%2Fzenodo.19594669-blue.svg?style=flat" alt="DOI">
+    </a>
+</div>
 
 <br>
 
@@ -15,7 +18,7 @@ The proposed system decouples **offence detection**, **action classification**, 
 
 <div align="center">
   <h5>
-    📄 <a href="asset/Arbitro.pdf" target="_blank">ArbItro: Empirical Limits of Multi-Task CNN-RNN
+    📄 <a href="https://doi.org/10.5281/zenodo.19594669" target="_blank">ArbItro: Empirical Limits of Multi-Task CNN-RNN
 Pipelines for Football Foul Recognition </a>
   </h5>
 </div>
