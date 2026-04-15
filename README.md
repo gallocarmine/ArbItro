@@ -9,11 +9,16 @@
 
 <br>
 
-We introduce **ArbItro**, a *deep learning framework* designed to support the recognition 
-and classification of complex *football actions*. Unlike traditional systems that
-treat foul detection as a simple binary problem, ArbItro employs a **_multitask learning_** approach 
-to simultaneously interpret the *type of offence*, the *nature of the action*, and,
-**crucially**, the **_severity_** of the **_disciplinary sanction required_**.
+In this work, we present **ArbItro**, a *multi-task CNN-RNN framework* for **football foul recognition** on the **SoccerNet-MVFouls** benchmark, designed as a controlled study of what *structurally classical architectures* can recover under **strong visual ambiguity** and **long-tail supervision**.
+
+The proposed system decouples **offence detection**, **action classification**, and **disciplinary severity assessment** into separate *prediction heads*, with the aim of *disentangling infringement recognition from sanction estimation*.
+
+<div align="center">
+  <h5>
+    📄 <a href="asset/Arbitro.pdf" target="_blank">ArbItro: Empirical Limits of Multi-Task CNN-RNN
+Pipelines for Football Foul Recognition </a>
+  </h5>
+</div>
 
 ##
 <br>
@@ -105,13 +110,7 @@ to simultaneously interpret the *type of offence*, the *nature of the action*, a
 #### ML & Deep Learning
 
 <p align="left">
-  <img src="https://cdn.jsdelivr.net/gh/devicons/devicon/icons/python/python-original.svg" width="48" height="48" alt="Python"/>&nbsp;&nbsp;&nbsp;
-  <img src="https://cdn.jsdelivr.net/gh/devicons/devicon/icons/tensorflow/tensorflow-original.svg" width="45" height="45" alt="TensorFlow"/>&nbsp;&nbsp;&nbsp;
-  <img src="https://cdn.jsdelivr.net/gh/devicons/devicon/icons/keras/keras-original.svg" width="45" height="45" alt="Keras"/>&nbsp;&nbsp;&nbsp;
-  <img src="https://cdn.jsdelivr.net/gh/devicons/devicon/icons/numpy/numpy-original.svg" width="45" height="45" alt="NumPy"/>&nbsp;&nbsp;&nbsp;
-  <img src="https://cdn.jsdelivr.net/gh/devicons/devicon/icons/pandas/pandas-original.svg" width="45" height="45" alt="Pandas"/>&nbsp;&nbsp;&nbsp;
-  <img src="https://cdn.jsdelivr.net/gh/devicons/devicon/icons/scikitlearn/scikitlearn-original.svg" width="45" height="45" alt="Scikit-learn"/>&nbsp;&nbsp;&nbsp;
-  <img src="https://cdn.jsdelivr.net/gh/devicons/devicon/icons/opencv/opencv-original.svg" width="45" height="45" alt="OpenCV"/>
+<img src="https://skillicons.dev/icons?i=python,tensorflow,scikitlearn,opencv" height="45"/>&nbsp;
 </p>
 
 ##
@@ -191,13 +190,13 @@ model/src/pipeline2/arbitro_test.ipynb
 
 **Ensemble Evaluation**
 ```bash
-model/src/ensamble_test.ipynb
+model/src/ensemble_test.ipynb
 ```
 
 > Requires both `pipeline1.keras` and `pipeline2.keras` to be present in `ArbItro_Training/models/`.
 
-> Mount your Google Drive and update the dataset path
-> in `data_loader.py` accordingly.
+> Mount your Google Drive and update the dataset path in `data_loader.py` accordingly,
+> or store the dataset locally and update the path directly.
 
 ##
 
@@ -211,7 +210,6 @@ model/src/ensamble_test.ipynb
 ```bash
 git clone https://github.com/tuo-username/ArbItro.git
 cd ArbItro
-git lfs pull   # scarica pipeline1.keras e pipeline2.keras
 ```
 
 **2. Install Python dependencies**
@@ -250,14 +248,8 @@ The following animated sequences provide a comprehensive overview of the ArbItro
 
 ### System Overview 
 
-The following animated sequences demonstrate the ArbItro workflow, starting with a conceptual illustration of a pitch event, from the moment a foul occurs to the referee's whistle, followed by a practical walkthrough of our VARS interface analyzing that specific event.
+The following animated sequences demonstrate the ArbItro workflow: a practical walkthrough of our VARS interface analyzing that specific event.
 
-<div align="center">
-  <img src="asset/overview.gif" alt="ArbItro Multi-View AI Overview (Anime Style)" width="90%" loading="lazy">
-  <br>
-</div>
-
-<br>
 
 The VARS interface allows the human operator to manually select and load the video feeds for a specific foul event. The user is responsible for uploading the synchronized camera angles required by the multi-view Deep Learning model for accurate evaluation.
 
@@ -311,7 +303,7 @@ ArbItro/
         │   ├── data_loader.py
         │   └── model.py
         │
-        └── ensamble_test.ipynb
+        └── ensemble_test.ipynb
 ```
 ##
 <br>
